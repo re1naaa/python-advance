@@ -1,0 +1,21 @@
+{
+  "name": "Reina",
+  "age": 15,
+  "address":{
+    "street": "123 Main St",
+    "city": "Anytown",
+    "state": "CA",
+    "postal_code": "123456"
+  },
+  "contacts": [
+  {
+     "type" : "email",
+     "value": "reina@gmail.com"
+
+},
+    {
+      "type" : "phone",
+      "value": "123-456-789"
+    }
+]
+}
