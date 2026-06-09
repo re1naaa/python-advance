@@ -1,25 +1,26 @@
 import sqlite3
-from models import Recipe, Category
+from models import Recipe, RecipeCreate
 
 
 def create_connection():
-
-    connection = sqlite3.connect("categorys.db")
+    connection = sqlite3.connect("recipes.db")
     connection.row_factory = sqlite3.Row
     return connection
 
 
 def create_table():
-
     connection = create_connection()
     cursor = connection.cursor()
+
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS categorys (
+        CREATE TABLE IF NOT EXISTS recipes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            director TEXT NOT NULL
+            name TEXT NOT NULL,
+            description TEXT NOT NULL,
+            meal_type TEXT NOT NULL
         )
     """)
+
     connection.commit()
     connection.close()
 
@@ -27,56 +28,113 @@ def create_table():
 create_table()
 
 
-def create_category(category: Category) -> int:
-
+def create_recipe(recipe: RecipeCreate) -> int:
     connection = create_connection()
     cursor = connection.cursor()
-    cursor.execute("INSERT INTO categorys (title, director) VALUES (?, ?)", (category.title, category.director))
+
+    cursor.execute(
+        """
+        INSERT INTO recipes (name, description, meal_type)
+        VALUES (?, ?, ?)
+        """,
+        (
+            recipe.name,
+            recipe.description,
+            recipe.meal_type
+        )
+    )
+
     connection.commit()
-    category_id = cursor.lastrowid
+    recipe_id = cursor.lastrowid
     connection.close()
-    return category_id
+
+    return recipe_id
 
 
-def read_category():
-
+def read_recipes():
     connection = create_connection()
     cursor = connection.cursor()
-    cursor.execute("SELECT * FROM categorys")
+
+    cursor.execute("SELECT * FROM recipes")
     rows = cursor.fetchall()
+
     connection.close()
-    categorys = [Category(id=row[0], title=row[1], director=row[2]) for row in rows]
-    return categorys
+
+    recipes = [
+        Recipe(
+            id=row["id"],
+            name=row["name"],
+            description=row["description"],
+            meal_type=row["meal_type"]
+        )
+        for row in rows
+    ]
+
+    return recipes
 
 
 def read_recipe(recipe_id: int):
-
     connection = create_connection()
     cursor = connection.cursor()
-    cursor.execute("SELECT * FROM recipes WHERE id = ?", (recipe_id,))
+
+    cursor.execute(
+        "SELECT * FROM recipes WHERE id = ?",
+        (recipe_id,)
+    )
+
     row = cursor.fetchone()
+
     connection.close()
+
     if row is None:
         return None
-    return Recipe(id=row["id"], title=row["title"], director=row["director"])
 
-def update_category(recipe_id: int, category: Category) -> bool:
+    return Recipe(
+        id=row["id"],
+        name=row["name"],
+        description=row["description"],
+        meal_type=row["meal_type"]
+    )
 
+
+def update_recipe(recipe_id: int, recipe: RecipeCreate):
     connection = create_connection()
     cursor = connection.cursor()
-    cursor.execute("UPDATE categorys SET title = ?, director = ? WHERE id = ?", (category.title, category.director, recipe_id))
+
+    cursor.execute(
+        """
+        UPDATE recipes
+        SET name = ?, description = ?, meal_type = ?
+        WHERE id = ?
+        """,
+        (
+            recipe.name,
+            recipe.description,
+            recipe.meal_type,
+            recipe_id
+        )
+    )
+
     connection.commit()
     updated = cursor.rowcount
+
     connection.close()
+
     return updated > 0
 
 
-def delete_category(recipe_id: int) -> bool:
-
+def delete_recipe(recipe_id: int):
     connection = create_connection()
     cursor = connection.cursor()
-    cursor.execute("DELETE FROM categorys WHERE id = ?", (recipe_id,))
+
+    cursor.execute(
+        "DELETE FROM recipes WHERE id = ?",
+        (recipe_id,)
+    )
+
     connection.commit()
     deleted = cursor.rowcount
+
     connection.close()
+
     return deleted > 0

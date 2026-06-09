@@ -1,8 +1,11 @@
 from pydantic import BaseModel
 
-class Category(BaseModel):
-    title: str
-    director: str
 
-class Recipe(Category):
+class RecipeCreate(BaseModel):
+    name: str
+    description: str
+    meal_type: str
+
+
+class Recipe(RecipeCreate):
     id: int
