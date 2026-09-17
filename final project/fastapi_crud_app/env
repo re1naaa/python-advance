@@ -1,0 +1,3 @@
+APP_NAME=Product Manager API
+APP_VERSION=1.0.0
+DATABASE_PATH=products.db
