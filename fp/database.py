@@ -9,13 +9,8 @@ the application starts.
 import sqlite3
 from typing import Optional, List, Dict, Any
 
-
 DB_NAME = "game.db"
 
-
-# ---------------------------------------------------------------------------
-# Database connection
-# ---------------------------------------------------------------------------
 
 def get_connection() -> sqlite3.Connection:
     """Create and return a new database connection with row access by column name."""
@@ -24,19 +19,14 @@ def get_connection() -> sqlite3.Connection:
     return connection
 
 
-# ---------------------------------------------------------------------------
-# Database initialization
-# ---------------------------------------------------------------------------
-
 def init_db() -> None:
     """Create the games table if it does not already exist."""
     connection = get_connection()
     cursor = connection.cursor()
-
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS games (
-            id INTEGER PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             player_name TEXT NOT NULL,
             difficulty TEXT NOT NULL,
             minimum_number INTEGER NOT NULL,
@@ -50,23 +40,9 @@ def init_db() -> None:
         )
         """
     )
-
     connection.commit()
     connection.close()
 
-
-# ---------------------------------------------------------------------------
-# Script Entry Point (Placed safely at the bottom)
-# ---------------------------------------------------------------------------
-
-if __name__ == "__main__":
-    print("Initializing database...")
-    init_db()
-    print("Database 'game.db' created successfully with zero-indexed ID calculation logic!")
-
-# ---------------------------------------------------------------------------
-# Create
-# ---------------------------------------------------------------------------
 
 def create_game(
     player_name: str,
@@ -77,33 +53,18 @@ def create_game(
     max_attempts: int,
     created_at: str,
 ) -> Dict[str, Any]:
-    """
-    Insert a new game into the database.
-    New databases start game IDs at 0.
-    """
+    """Insert a new game into the database and return it as a dictionary."""
     connection = get_connection()
     cursor = connection.cursor()
-
-    # Find the next ID.
-    # If the DB is empty or data was reset, COALESCE sets next_id directly to 0.
-    cursor.execute(
-        """
-        SELECT COALESCE(MAX(id) + 1, 0) AS next_id
-        FROM games
-        """
-    )
-    next_id = cursor.fetchone()["next_id"]
-
     cursor.execute(
         """
         INSERT INTO games (
-            id, player_name, difficulty, minimum_number, maximum_number, 
+            player_name, difficulty, minimum_number, maximum_number,
             secret_number, attempts, max_attempts, status, created_at, finished_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, 0, ?, 'playing', ?, NULL)
+        VALUES (?, ?, ?, ?, ?, 0, ?, 'playing', ?, NULL)
         """,
         (
-            next_id,
             player_name,
             difficulty,
             minimum_number,
@@ -113,84 +74,44 @@ def create_game(
             created_at,
         ),
     )
-
     connection.commit()
+    new_id = cursor.lastrowid
     connection.close()
+    return get_game_by_id(new_id)
 
-    return get_game_by_id(next_id)
-
-
-# ---------------------------------------------------------------------------
-# Read - All games
-# ---------------------------------------------------------------------------
 
 def get_all_games() -> List[Dict[str, Any]]:
     """Return all games in the database, most recently created first."""
     connection = get_connection()
     cursor = connection.cursor()
-
-    cursor.execute(
-        """
-        SELECT *
-        FROM games
-        ORDER BY id DESC
-        """
-    )
-
+    cursor.execute("SELECT * FROM games ORDER BY id DESC")
     rows = cursor.fetchall()
     connection.close()
     return [dict(row) for row in rows]
 
 
-# ---------------------------------------------------------------------------
-# Read - Single game
-# ---------------------------------------------------------------------------
-
 def get_game_by_id(game_id: int) -> Optional[Dict[str, Any]]:
     """Return a single game by its ID, or None if it does not exist."""
     connection = get_connection()
     cursor = connection.cursor()
-
-    cursor.execute(
-        """
-        SELECT *
-        FROM games
-        WHERE id = ?
-        """,
-        (game_id,),
-    )
-
+    cursor.execute("SELECT * FROM games WHERE id = ?", (game_id,))
     row = cursor.fetchone()
     connection.close()
     return dict(row) if row else None
 
 
-# ---------------------------------------------------------------------------
-# Update - Player name
-# ---------------------------------------------------------------------------
-
 def update_player_name(game_id: int, player_name: str) -> Optional[Dict[str, Any]]:
     """Update only the player name of a game and return the updated game."""
     connection = get_connection()
     cursor = connection.cursor()
-
     cursor.execute(
-        """
-        UPDATE games
-        SET player_name = ?
-        WHERE id = ?
-        """,
+        "UPDATE games SET player_name = ? WHERE id = ?",
         (player_name, game_id),
     )
-
     connection.commit()
     connection.close()
     return get_game_by_id(game_id)
 
-
-# ---------------------------------------------------------------------------
-# Update - After guess
-# ---------------------------------------------------------------------------
 
 def update_after_guess(
     game_id: int,
@@ -201,49 +122,29 @@ def update_after_guess(
     """Update a game's attempts, status, and finished_at timestamp after a guess."""
     connection = get_connection()
     cursor = connection.cursor()
-
     cursor.execute(
         """
         UPDATE games
-        SET attempts = ?,
-            status = ?,
-            finished_at = ?
+        SET attempts = ?, status = ?, finished_at = ?
         WHERE id = ?
         """,
         (attempts, status, finished_at, game_id),
     )
-
     connection.commit()
     connection.close()
     return get_game_by_id(game_id)
 
 
-# ---------------------------------------------------------------------------
-# Delete
-# ---------------------------------------------------------------------------
-
 def delete_game(game_id: int) -> bool:
     """Delete a game by ID. Return True if a row was actually deleted."""
     connection = get_connection()
     cursor = connection.cursor()
-
-    cursor.execute(
-        """
-        DELETE FROM games
-        WHERE id = ?
-        """,
-        (game_id,),
-    )
-
+    cursor.execute("DELETE FROM games WHERE id = ?", (game_id,))
     connection.commit()
     deleted = cursor.rowcount > 0
     connection.close()
     return deleted
 
-
-# ---------------------------------------------------------------------------
-# Statistics
-# ---------------------------------------------------------------------------
 
 def get_statistics() -> Dict[str, Any]:
     """Calculate and return overall statistics about all games."""
@@ -281,15 +182,10 @@ def get_statistics() -> Dict[str, Any]:
     }
 
 
-# ---------------------------------------------------------------------------
-# Leaderboard
-# ---------------------------------------------------------------------------
-
 def get_leaderboard(limit: int = 10) -> List[Dict[str, Any]]:
     """Return the best completed (won) games, sorted by fewest attempts first."""
     connection = get_connection()
     cursor = connection.cursor()
-
     cursor.execute(
         """
         SELECT player_name, difficulty, attempts, finished_at
@@ -300,7 +196,6 @@ def get_leaderboard(limit: int = 10) -> List[Dict[str, Any]]:
         """,
         (limit,),
     )
-
     rows = cursor.fetchall()
     connection.close()
     return [dict(row) for row in rows]
